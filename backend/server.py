@@ -1264,16 +1264,27 @@ async def analyze_with_evidence(text: str) -> Dict[str, Any]:
 
 # ── OCR ───────────────────────────────────────────────────────────────────────
 def _sync_ocr(image_bytes: bytes) -> str:
-    if not OCR_AVAILABLE:
-        raise RuntimeError("pytesseract not available")
-    img = PILImage.open(io.BytesIO(image_bytes))
-    if img.mode not in ("RGB", "L"):
-        img = img.convert("RGB")
-    w, h = img.size
-    if w < 400 or h < 400:
-        scale = max(400 / max(w, 1), 400 / max(h, 1))
-        img   = img.resize((int(w * scale), int(h * scale)), PILImage.LANCZOS)
-    return pytesseract.image_to_string(img, config="--psm 6").strip()
+    """OCR using OCR.Space API — works on any server without system install."""
+    api_key = os.environ.get("OCR_SPACE_API_KEY", "helloworld")
+    try:
+        response = requests.post(
+            "https://api.ocr.space/parse/image",
+            files={"file": ("image.jpg", image_bytes, "image/jpeg")},
+            data={"apikey": api_key, "language": "eng", "isOverlayRequired": False},
+            timeout=30,
+        )
+        result = response.json()
+        if result.get("IsErroredOnProcessing"):
+            raise RuntimeError(str(result.get("ErrorMessage", "OCR failed")))
+        parsed = result.get("ParsedResults", [])
+        if not parsed:
+            return ""
+        text = parsed[0].get("ParsedText", "").strip()
+        logger.info(f"OCR.Space extracted {len(text.split())} words")
+        return text
+    except Exception as e:
+        logger.warning(f"OCR.Space failed: {e}")
+        raise RuntimeError(f"OCR failed: {str(e)}")
 
 
 def _sync_fetch_url(url: str) -> Dict[str, str]:
@@ -1650,7 +1661,7 @@ async def capabilities():
         "gemini_model":   GEMINI_MODEL,
     }
 
-@api_router.delete("/cache/clear")
+@api_router.get("/cache/clear")
 async def clear_cache():
     result = await db.claim_cache.delete_many({})
     logger.info(f"Cache cleared: {result.deleted_count} entries removed")
