@@ -273,7 +273,7 @@ def analyze_text(text: str) -> Dict[str, Any]:
     for phrase in SUSPICIOUS_PHRASES:
         if phrase in tl:
             found.append(phrase)
-            deductions += 12
+            deductions += 18
     if found:
         reasoning.append(f"Contains {len(found)} known misinformation indicator(s) — suspicious language detected")
 
@@ -297,7 +297,7 @@ def analyze_text(text: str) -> Dict[str, Any]:
 
     conspiracy = CONSPIRACY_PATTERN.findall(text)
     if conspiracy:
-        deductions += min(40, len(conspiracy) * 15)
+        deductions += min(60, len(conspiracy) * 20)
         found.extend(conspiracy[:3])
         reasoning.append(f"Conspiracy-associated terminology: {', '.join(set(c.lower() for c in conspiracy[:3]))}")
 
