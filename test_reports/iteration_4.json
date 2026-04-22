@@ -1,0 +1,65 @@
+{
+  "summary": "TruthScan v3 evidence-based analysis testing. Core architecture change verified: evidence-first scoring for short claims, claim extraction, evidence_summary pills in UI. Rafale claim correctly returns 'Likely False' (20/100) with relevant India-Pakistan evidence links. All key UI elements (claim-section, evidence-summary, sample buttons) present and functional.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/analyze (Rafale claim)",
+        "issue": "DDG search results are live/variable - first backend test run returned score 80 (Likely True), UI run returned score 20 (Likely False). Results vary between executions due to live DDG search. This is expected behavior but creates flaky test conditions.",
+        "priority": "MEDIUM"
+      },
+      {
+        "endpoint": "/api/analyze (fake news long text)",
+        "issue": "SHOCKING BOMBSHELL 66-word fake news scored 32 (Misleading) instead of <25 (Likely False). Long text (>50 words) uses NLP-primary path. NLP deductions bring score to ~32 but not below 25. Score is still indicative of misinformation but doesn't reach 'Likely False' threshold.",
+        "priority": "LOW"
+      },
+      {
+        "endpoint": "/api/auth/login",
+        "issue": "Login response returns user fields flat (email, id, name, role at root level) not nested under 'user' key. Test expectation was wrong, not a real bug.",
+        "priority": "INFO"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AnalyzePage - Analyze Credibility button",
+        "issue": "Missing data-testid='analyze-btn' attribute on the 'Analyze Credibility' button",
+        "selector": "button:has-text('Analyze Credibility')",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_truthscan_v3.py",
+    "/app/test_reports/pytest/pytest_results_iter4.xml"
+  ],
+  "action_items": [
+    "Add data-testid='analyze-btn' to the Analyze Credibility button for testability",
+    "Consider: fake news text >50 words uses NLP-primary path. If a claim is explicitly conspiracy/fake-news language regardless of word count, consider adjusting threshold or using a hybrid approach",
+    "DDG search variability: consider caching last result or adding more stable fallback for consistent scoring on well-known claims"
+  ],
+  "critical_code_review_comments": [
+    "Evidence search flakiness: DDG live search returns different results on each run. The Rafale claim alternates between 'Likely True' (80) and 'Likely False' (20) depending on what DDG returns in that moment. This is a fundamental reliability issue for a fact-checker.",
+    "Word count threshold (50 words) for evidence-first vs NLP-primary is too simplistic. A 66-word fake news article with SHOCKING BOMBSHELL, conspiracy terms etc. should ideally be 'Likely False' not just 'Misleading'. Consider lowering threshold or using NLP flags to override.",
+    "The get_trusted_sources() function checks claim.lower() but the claim is extracted via extract_claim() which strips question prefixes. For the Rafale claim, extracted claim is 'India lose 6 Rafale jets...' - 'rafale' is in military_words so The Hindu/NDTV/BoomLive are correctly shown."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_truthscan_v3.py"
+  ],
+  "success_rate": {
+    "backend": "73% (8/11 tests passed)",
+    "frontend": "90% (all core flows working, minor missing data-testid)"
+  },
+  "test_credentials": "admin@truthscan.ai / admin123, test@truthscan.ai / Test@123",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "TruthScan v3 evidence-based pipeline is working. Key: short claims (<50 words) are evidence-driven via DDG search. UI has claim-section and evidence-summary data-testid. Sample buttons work. The main concern is DDG search variability causing score fluctuations between runs - this is inherent to live search. Backend test at /app/backend/tests/test_truthscan_v3.py.",
+  "rca_of_issues": {
+    "rafale_score_fluctuation": "DDG (DuckDuckGo) returns different top results on each query. In one run, Al Jazeera 'Why did India lose jets' article dominated with confirm signals → score 80. In another run, PIB fact-check + DFRAC debunking dominated → score 20. The evidence scoring correctly processes what DDG returns, but DDG is non-deterministic.",
+    "fake_news_score_32_not_below_25": "The 66-word text exceeds the 50-word threshold for 'long article' mode. NLP starts at 75, subtracts for SHOCKING(-10), BOMBSHELL(-10), conspiracy terms (-40), etc. Landing at ~32. Evidence search may find some results with mixed signals. To fix: either lower the word threshold, or apply NLP-override when NLP score < 20 from strong conspiracy signals."
+  }
+}

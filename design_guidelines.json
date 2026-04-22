@@ -1,0 +1,103 @@
+{
+  "theme": "dark",
+  "archetype": "Archetype 7: Electric & Neon (Dark Mode)",
+  "vibe": "Futuristic, analytical, exposing the truth, cyber-security, premium startup, high-tech.",
+  "colors": {
+    "background": {
+      "base": "#05050A",
+      "surface": "#0B0B14",
+      "glass": "rgba(11, 11, 20, 0.6)"
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "#A1A1AA",
+      "accent": "#00F0FF"
+    },
+    "accents": {
+      "cyan": "#00F0FF",
+      "purple": "#B500FF",
+      "blue": "#0066FF",
+      "success": "#00FF66",
+      "warning": "#FFB800",
+      "danger": "#FF3366"
+    },
+    "borders": {
+      "subtle": "rgba(255, 255, 255, 0.1)",
+      "neon_cyan": "rgba(0, 240, 255, 0.3)",
+      "neon_purple": "rgba(181, 0, 255, 0.3)"
+    }
+  },
+  "typography": {
+    "heading": "Unbounded, sans-serif",
+    "body": "IBM Plex Sans, sans-serif",
+    "mono": "JetBrains Mono, monospace",
+    "rules": [
+      "Headlines > 32px MUST use tracking-tight or tracking-tighter.",
+      "Overlines/Labels MUST be Uppercase, Tiny (text-xs), and Wide Spacing (tracking-[0.2em]).",
+      "Line Height: Tight (leading-none) for headers, Loose (leading-relaxed) for body.",
+      "Never use default bold for headers, use Light for elegance or Black for impact if variable font supports it."
+    ]
+  },
+  "layout_spacing": {
+    "philosophy": "Generous Spacing (p-8 to p-12) for marketing, Dense Control Room grid for Dashboard.",
+    "dashboard_grid": "Grid-cols-1 md:grid-cols-3 lg:grid-cols-4. Gap tight (gap-4 or gap-6). Every pixel utilized. h-full on children.",
+    "marketing_grid": "Bento Grid Tetris Mode. Asymmetry. Grid-cols-1 md:grid-cols-12 with varied spans."
+  },
+  "surfaces": {
+    "cards": "Glassmorphism (Crystal variant): bg-white/5 or bg-black/60, backdrop-blur-xl, border border-white/10. Soft diffuse shadow. Hover: slight lift and border color darkens/glows.",
+    "headers": "Crystal Glass: backdrop-blur-xl bg-black/60, border-b border-white/10.",
+    "glow_effects": "Use drop-shadow-[0_0_8px_rgba(0,240,255,0.5)] on critical data elements (gauge meters, prediction labels)."
+  },
+  "components": {
+    "buttons": "Shadcn based. Primary CTA: bg-cyan-500/10 border border-cyan-500 text-cyan-400 hover:bg-cyan-500/20 hover:shadow-[0_0_15px_rgba(0,240,255,0.4)]. Secondary: bg-white/5 text-white hover:bg-white/10.",
+    "inputs": "Shadcn based. bg-black/40 border-white/10 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 text-white.",
+    "gauge_meter": "Recharts radial bar or custom SVG. Neon colors based on score (Red < 40, Yellow 40-70, Green > 70). Needs blur/glow filters to look like a HUD.",
+    "suspicious_phrases": "Rendered as text spans with bg-red-500/20 text-red-400 border border-red-500/30 rounded px-1 animate-pulse for tension.",
+    "badges": "Prediction Label badges should use solid high-contrast neon variants, e.g., bg-red-500/20 text-red-500 border border-red-500/50 for Fake."
+  },
+  "animations": {
+    "hover": "Transition transform 0.2s ease, border-color 0.2s ease.",
+    "entrance": "Staggered fade-in up for lists/history. Use framer-motion.",
+    "data_reveal": "Matrix-style character decode effect or typewriter effect for AI reasoning text to feel like an active terminal.",
+    "marquee": "Use react-fast-marquee for a 'Kinetic Texture' in the background of the landing page."
+  },
+  "media": {
+    "icons": "lucide-react",
+    "images": [
+      {
+        "category": "hero_background",
+        "url": "https://static.prod-images.emergentagent.com/jobs/a158118b-a259-491f-8471-f9e3d36f0e02/images/304036ba5ec697473845507dc4d02cb88af780c9e4da0775f2281f19d2b856ad.png",
+        "description": "Abstract futuristic dark background with glowing cyan and purple optical fibers. Overlay with bg-black/50."
+      },
+      {
+        "category": "feature_abstract",
+        "url": "https://static.prod-images.emergentagent.com/jobs/a158118b-a259-491f-8471-f9e3d36f0e02/images/0c67fe93c41e2a5ae558f3f2576f34c1941b921de0445b2df71ff658006dcf70.png",
+        "description": "Minimalist dark 3D glassmorphism spheres hovering in a dark void. Good for the About or Features section."
+      },
+      {
+        "category": "analyzer_background",
+        "url": "https://static.prod-images.emergentagent.com/jobs/a158118b-a259-491f-8471-f9e3d36f0e02/images/682fa33c55a74974aacb530a614876d5de99967e3505b18582eda66b9492dbef.png",
+        "description": "Macro shot of a glowing neon cyan grid scanning a matte black surface. Great for the Analyzer loading state or background."
+      },
+      {
+        "category": "team_photo",
+        "url": "https://static.prod-images.emergentagent.com/jobs/a158118b-a259-491f-8471-f9e3d36f0e02/images/f88a21eaf1ad2530ea93469166000e90fec04c407d1841644025e8cb64a26ce5.png",
+        "description": "Professional team portrait of three diverse tech founders in a modern dark office. Use on the About page."
+      }
+    ]
+  },
+  "accessibility": {
+    "contrast": "Ensure minimum 4.5:1 ratio for text over dark backgrounds. Use text-shadow if placed over complex background images.",
+    "testing": "All interactive elements MUST include data-testid attribute in kebab-case (e.g., data-testid='analyze-submit-button')."
+  },
+  "instructions_to_main_agent": [
+    "Extend Tailwind config to include custom colors (base: #05050A, surface: #0B0B14) and set body bg to base.",
+    "Install Unbounded, IBM Plex Sans, and JetBrains Mono fonts and apply them in index.css.",
+    "Build the Dashboard page using CSS Grid following the 'Control Room' protocol with tight gaps.",
+    "Do NOT use pure #000000. Use the tinted deep black #05050A.",
+    "Implement the 'suspicious phrases' highlighter logic on the Analyzer page to wrap matched substrings in glowing inline spans.",
+    "For Recharts (History Dashboard), customize the tooltips and grid lines to match the glassmorphism dark theme (stroke: rgba(255,255,255,0.1)).",
+    "Use framer-motion for page transitions and micro-interactions.",
+    "Ensure the hero image has an explicit bg-black/50 overlay to guarantee text readability."
+  ]
+}
