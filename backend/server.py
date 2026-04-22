@@ -412,7 +412,7 @@ def generate_claim_queries(claim: str, entities: Optional[Dict] = None) -> List[
     return [
         f"{short} fact check",
         f"{enriched} true false verified news",
-        f"{short2} debunked misinformation evidence",
+        f"{short2} fact check verified news",
     ]
 
 # ── Google Custom Search (primary) ───────────────────────────────────────────
