@@ -1683,16 +1683,7 @@ async def startup_event():
         await db.users.update_one({"email": "test@truthscan.ai"},
             {"$set": {"password_hash": hash_password("Test@123")}})
 
-    creds = pathlib.Path("/app/memory/test_credentials.md")
-    creds.parent.mkdir(parents=True, exist_ok=True)
-    creds.write_text(
-        f"# TruthScan v4.5\n\n## Admin\n- Email: {ADMIN_EMAIL}\n- Password: {ADMIN_PASSWORD}\n\n"
-        f"## Test User\n- Email: test@truthscan.ai\n- Password: Test@123\n\n"
-        f"## Capabilities\n- OCR: {OCR_AVAILABLE}\n- URL: {TRAFILATURA_AVAILABLE}\n"
-        f"- DDG: {DDG_AVAILABLE}\n- PDF: {PDF_AVAILABLE}\n- NER: {SPACY_AVAILABLE}\n"
-        f"- Google Search: {'YES' if GOOGLE_SEARCH_API_KEY and GOOGLE_SEARCH_CX else 'NO'}\n"
-        f"- Gemini: {'YES (' + GEMINI_MODEL + ')' if GEMINI_API_KEY else 'NO'}\n"
-    )
+
     logger.info(
         f"TruthScan v4.5 started. OCR={OCR_AVAILABLE} URL={TRAFILATURA_AVAILABLE} "
         f"DDG={DDG_AVAILABLE} PDF={PDF_AVAILABLE} NER={SPACY_AVAILABLE} "
