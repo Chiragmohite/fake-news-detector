@@ -12,12 +12,9 @@ import os, re, jwt, bcrypt, logging, secrets, pathlib, asyncio, base64, io, requ
 import xml.etree.ElementTree as ET
 
 # ── Optional capability imports ──────────────────────────────────────────────
-try:
-    import pytesseract
-    from PIL import Image as PILImage
-    OCR_AVAILABLE = True
-except ImportError:
-    OCR_AVAILABLE = False
+
+from PIL import Image as PILImage
+OCR_AVAILABLE = True
 
 try:
     import trafilatura
@@ -791,12 +788,6 @@ def _apply_death_claim_hardcap(
     score: int, claim: str, evidence: Dict,
     flags: Dict[str, bool], reasoning: List[str],
 ) -> int:
-    """
-    SIMPLIFIED universal death hardcap — one rule only:
-    If the death is not explicitly confirmed in snippets → cap at 12 or 18.
-    No exceptions for fact-checkers. No escape hatches.
-    This is the final word on any death claim score.
-    """
     if not flags.get("is_death_claim", False):
         return score
 
@@ -936,8 +927,9 @@ def compute_final_verdict(nlp_data: Dict, evidence: Dict, claim: str,
             score = 50
             final_reasoning.append("Evidence signals are closely mixed — verify with a dedicated fact-checker")
 
+        # ── FIX: Cap score when NLP detects heavy fake news indicators ──────
         if nlp_score < 30:
-            score = max(5, score - 10)
+            score = max(5, min(score, nlp_score + 10))
             final_reasoning.append("Suspicious language patterns detected in the claim itself")
 
         confidence = min(90, 35 + n_credible * 12 + n_fact_check * 15 + (5 if n_total >= 4 else 0))
@@ -1068,7 +1060,6 @@ async def _get_cached_result(claim_key: str) -> Optional[Dict]:
     return None
 
 async def _set_cached_result(claim_key: str, result: Dict) -> None:
-    # Always cache — even 0-source results — so score never changes on reruns.
     await db.claim_cache.update_one(
         {"claim_key": claim_key},
         {"$set": {"claim_key": claim_key, "result": result,
@@ -1084,7 +1075,6 @@ def _call_gemini_api(prompt: str) -> Optional[Dict]:
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
-        # temperature=0 → fully deterministic, no score drift between runs
         "generationConfig": {"temperature": 0, "maxOutputTokens": 400},
     }
     for attempt in range(2):
@@ -1148,7 +1138,13 @@ RULE 2 — NEGATION CLAIMS ("X lost", "X failed", "X didn't win"):
 RULE 3 — TEMPORAL CLAIMS ("yesterday", "today", "this morning"):
    - If no recent news explicitly confirms the event → score MUST be below 35.
 
-RULE 4 — GENERAL:
+RULE 4 — FAKE NEWS / MISINFORMATION INDICATORS:
+   - If the claim contains phrases like "miracle cure", "doctors hate this", "wake up sheeple",
+     "government cover-up", "share before they delete", "big pharma", "suppressed information",
+     conspiracy theories, or other clear misinformation markers → score MUST be below 20.
+   - These are hallmarks of fabricated viral content. Score accordingly.
+
+RULE 5 — GENERAL:
    - Evidence that a person EXISTS or is ACTIVE does not confirm a claim ABOUT them.
    - Extraordinary claims need explicit confirmation, not just related articles.
 
@@ -1241,6 +1237,16 @@ async def analyze_with_evidence(text: str) -> Dict[str, Any]:
         g_score = _apply_death_claim_hardcap(g_score, claim, evidence, claim_flags, g_reasoning)
         if g_score <= 18 and g_label != "Likely False":
             g_label = "Likely False"
+
+        # ── NLP hardcap applied to Gemini score too ──────────────────────────
+        nlp_score = nlp_data["nlp_score"]
+        if nlp_score < 30 and g_score > nlp_score + 10:
+            old = g_score
+            g_score = max(5, nlp_score + 10)
+            logger.info(f"NLP hardcap applied to Gemini: {old} → {g_score}")
+            g_reasoning.insert(0, "Heavy misinformation language detected — score capped by NLP analysis")
+            if g_score <= 24 and g_label not in ("Likely False", "Misleading / Missing Context"):
+                g_label = "Likely False"
 
         result = {
             **base,
@@ -1709,8 +1715,7 @@ async def startup_event():
         f"DDG={DDG_AVAILABLE} PDF={PDF_AVAILABLE} NER={SPACY_AVAILABLE} "
         f"Google={'YES' if GOOGLE_SEARCH_API_KEY and GOOGLE_SEARCH_CX else 'NO'} "
         f"Gemini={'YES (' + GEMINI_MODEL + ')' if GEMINI_API_KEY else 'NO'}"
-    ) 
-    
+    )
 
 @app.on_event("shutdown")
 async def shutdown_event():
