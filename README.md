@@ -54,7 +54,7 @@ Built to fight misinformation — TruthScan gives users the tools to verify news
 - **MongoDB Atlas** — cloud database for users, analyses, and cache
 - **Motor** — async MongoDB driver
 - **Trafilatura** — web article extraction
-- **Pytesseract** — OCR for image text extraction
+- **OCR.Space API** — cloud OCR for image text extraction
 - **PDFMiner** — PDF text extraction
 - **spaCy** — Named Entity Recognition
 - **JWT** — secure authentication with access/refresh tokens
@@ -121,6 +121,7 @@ JWT_SECRET=your_secret_key
 GEMINI_API_KEY=your_gemini_key
 GOOGLE_SEARCH_API_KEY=your_google_key
 GOOGLE_SEARCH_CX=your_search_engine_id
+OCR_SPACE_API_KEY=your_ocr_space_key
 FRONTEND_URL=http://localhost:3000
 
 # Start server
@@ -154,7 +155,7 @@ npm start
 | GET | `/api/stats` | User analytics |
 | POST | `/api/auth/register` | Register new user |
 | POST | `/api/auth/login` | Login |
-| DELETE | `/api/cache/clear` | Clear result cache |
+| GET | `/api/cache/clear` | Clear result cache |
 
 ---
 
