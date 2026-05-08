@@ -1089,7 +1089,7 @@ def _call_gemini_api(prompt: str) -> Optional[Dict]:
             elif resp.status_code == 429:
                 if attempt == 0:
                     logger.warning("Gemini rate limited — waiting 5s and retrying...")
-                    time.sleep(5)
+                    time.sleep(8)
                 else:
                     logger.warning("Gemini rate limited on retry — falling back to heuristics")
                     return None
