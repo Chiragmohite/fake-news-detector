@@ -603,7 +603,8 @@ def _relevance_weight(title: str, claim: str, body: str = "") -> float:
     if   ratio >= 0.4 or overlap >= 3: return 1.0
     elif ratio >= 0.2 or overlap >= 2: return 0.7
     elif overlap == 1:                 return 0.4
-    else:                              return 0.15                              return 0.02
+    else:          
+        return 0.15                              
 
 def _signal_near_claim(snippet: str, claim_words: set, signal: str) -> bool:
     """Signal only counts if it appears near claim keywords in snippet."""
