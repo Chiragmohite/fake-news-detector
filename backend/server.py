@@ -832,6 +832,16 @@ def _apply_claim_type_adjustments(
             return new_score
         return new_score
 
+    if is_death:
+        return _apply_death_claim_hardcap(score, claim, evidence, flags, final_reasoning)
+
+    if is_temporal and score >= 65 and n_fc == 0:
+        new_score = min(score, 52)
+        final_reasoning.append("Recency/temporal claim — verify with current news sources before accepting")
+        return new_score
+
+    return score
+
 
 # ── Final Verdict Computation (heuristic fallback) ────────────────────────────
 def compute_final_verdict(nlp_data: Dict, evidence: Dict, claim: str,
