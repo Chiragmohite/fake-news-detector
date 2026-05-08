@@ -1083,7 +1083,7 @@ def _call_groq_api(prompt: str) -> Optional[Dict]:
                 "Content-Type": "application/json",
             },
             json={
-                "model": "llama-3.1-8b-instant",
+                "model": "llama-3.3-70b-versatile",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0,
                 "max_tokens": 400,
@@ -1678,7 +1678,7 @@ async def capabilities():
         "pdf":            PDF_AVAILABLE,
         "ner":            SPACY_AVAILABLE,
         "groq":         bool(GROQ_API_KEY),
-        "groq_model":   "llama-3.1-8b-instant",
+        "groq_model":   "llama-3.3-70b-versatile",
     }
 
 @api_router.get("/cache/clear")
