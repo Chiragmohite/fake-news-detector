@@ -50,7 +50,7 @@ except Exception:
 MONGO_URL         = os.environ["MONGO_URL"]
 DB_NAME           = os.environ["DB_NAME"]
 JWT_SECRET        = os.environ.get("JWT_SECRET", secrets.token_hex(32))
-GEMINI_API_KEY    = os.environ.get("GEMINI_API_KEY", "")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GOOGLE_SEARCH_API_KEY = os.environ.get("GOOGLE_SEARCH_API_KEY", "")
 GOOGLE_SEARCH_CX      = os.environ.get("GOOGLE_SEARCH_CX", "")
 JWT_ALG           = "HS256"
@@ -822,25 +822,15 @@ def _apply_claim_type_adjustments(
 
     if is_negation and not is_death:
         new_score = score
-    # Only flip if denial signals exist — pure confirm means claim IS true
         if denial > confirm and n_cred >= 2 and score >= 60:
             new_score = max(15, 100 - score)
-        final_reasoning.insert(0, "Evidence strongly confirms the OPPOSITE of this claim")
+            final_reasoning.insert(0, "Evidence strongly confirms the OPPOSITE of this claim")
+            return new_score
+        elif denial > confirm and n_cred >= 1 and score >= 55:
+            new_score = max(25, score - 25)
+            final_reasoning.insert(0, "Evidence contradicts this claim")
+            return new_score
         return new_score
-    elif denial > confirm and n_cred >= 1 and score >= 55:
-        new_score = max(25, score - 25)
-        final_reasoning.insert(0, "Evidence contradicts this claim")
-        return new_score
-
-    if is_death:
-        return _apply_death_claim_hardcap(score, claim, evidence, flags, final_reasoning)
-
-    if is_temporal and score >= 65 and n_fc == 0:
-        new_score = min(score, 52)
-        final_reasoning.append("Recency/temporal claim — verify with current news sources before accepting")
-        return new_score
-
-    return score
 
 
 # ── Final Verdict Computation (heuristic fallback) ────────────────────────────
@@ -1071,39 +1061,40 @@ async def _set_cached_result(claim_key: str, result: Dict) -> None:
     logger.info(f"Cache SET ({sources_found} sources): {claim_key[:60]}...")
 
 
-# ── Gemini LLM Reasoning ──────────────────────────────────────────────────────
-def _call_gemini_api(prompt: str) -> Optional[Dict]:
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0, "maxOutputTokens": 400},
-    }
-    for attempt in range(2):
-        try:
-            resp = requests.post(url, json=payload, timeout=15)
-            if resp.status_code == 200:
-                data = resp.json()
-                raw  = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                raw  = raw.replace("```json", "").replace("```", "").strip()
-                return __import__('json').loads(raw)
-            elif resp.status_code == 429:
-                if attempt == 0:
-                    logger.warning("Gemini rate limited — waiting 5s and retrying...")
-                    time.sleep(8)
-                else:
-                    logger.warning("Gemini rate limited on retry — falling back to heuristics")
-                    return None
-            else:
-                logger.warning(f"Gemini API error {resp.status_code}: {resp.text[:200]}")
-                return None
-        except Exception as e:
-            logger.warning(f"Gemini call failed: {e}")
+# ── Groq LLM Reasoning ──────────────────────────────────────────────────────
+
+def _call_groq_api(prompt: str) -> Optional[Dict]:
+    if not GROQ_API_KEY:
+        return None
+    try:
+        resp = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "llama-3.1-8b-instant",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0,
+                "max_tokens": 400,
+            },
+            timeout=15,
+        )
+        if resp.status_code == 200:
+            raw = resp.json()["choices"][0]["message"]["content"].strip()
+            raw = raw.replace("```json", "").replace("```", "").strip()
+            return __import__('json').loads(raw)
+        else:
+            logger.warning(f"Groq API error {resp.status_code}: {resp.text[:200]}")
             return None
-    return None
+    except Exception as e:
+        logger.warning(f"Groq call failed: {e}")
+        return None
 
 
 async def _gemini_verdict(claim: str, evidence: Dict, nlp_data: Dict) -> Optional[Dict]:
-    if not GEMINI_API_KEY:
+    if not GROQ_API_KEY:
         return None
 
     snippets = []
@@ -1114,8 +1105,8 @@ async def _gemini_verdict(claim: str, evidence: Dict, nlp_data: Dict) -> Optiona
         domain  = url.split("/")[2] if url.startswith("http") else url
         is_cred = "✓CREDIBLE" if r.get("is_credible") else ""
         is_fc   = "✓FACTCHECK" if r.get("is_fact_check") else ""
-    if title or snippet:
-        snippets.append(f"[{domain}]{is_cred}{is_fc}\nTitle: {title}\nSnippet: {snippet}\n")
+        if title or snippet:
+            snippets.append(f"[{domain}]{is_cred}{is_fc}\nTitle: {title}\nSnippet: {snippet}\n")
 
     snippets_text = "\n".join(snippets) if snippets else "No search results found."
 
@@ -1123,7 +1114,7 @@ async def _gemini_verdict(claim: str, evidence: Dict, nlp_data: Dict) -> Optiona
 
 CLAIM TO VERIFY: "{claim}"
 
-CURRENT NEWS SNIPPETS FROM GOOGLE/WEB SEARCH:
+CURRENT NEWS SNIPPETS FROM WEB SEARCH:
 {snippets_text}
 
 YOUR JOB:
@@ -1133,21 +1124,21 @@ YOUR JOB:
 
 SCORING RULES:
 - Score 80-95: Multiple snippets EXPLICITLY confirm the exact claim
-- Score 60-79: Some snippets support the claim but not fully explicit  
+- Score 60-79: Some snippets support the claim but not fully explicit
 - Score 40-59: Snippets discuss the topic but don't confirm or deny the specific claim
 - Score 20-39: Snippets suggest the opposite of the claim
 - Score 5-19: Snippets EXPLICITLY contradict the claim
 
 CRITICAL RULES:
-1. Article EXISTS about topic ≠ claim is true. Read what article SAYS.
-2. For election claims: find explicit "X won" or "X lost" in snippets
-3. For death claims: find explicit death confirmation with date/details
-4. For event claims: find explicit confirmation the event happened
+1. Article EXISTS about topic does NOT mean claim is true. Read what article SAYS.
+2. For political role claims ("X is PM/CM/President"): verify the EXACT person holds EXACT role
+3. For election claims: find explicit "X won" or "X lost" in snippets
+4. For death claims: find explicit death confirmation with date/details
 5. If snippets only discuss topic generally without confirming outcome → score 45-55
-6. If NO snippets found → score 50 (unknown)
-7. Base score ONLY on what snippets explicitly state, not your training knowledge
+6. If NO snippets found → use your own knowledge to score
+7. Base score on snippets first, your knowledge second
 
-Respond ONLY with valid JSON:
+Respond ONLY with valid JSON, no other text:
 {{
   "score": <integer 0-100>,
   "label": "<Likely True | Partially True | Needs Verification | Misleading / Missing Context | Likely False | Conflicting Reports>",
@@ -1158,8 +1149,8 @@ Respond ONLY with valid JSON:
     try:
         loop   = asyncio.get_event_loop()
         parsed = await asyncio.wait_for(
-            loop.run_in_executor(None, lambda: _call_gemini_api(prompt)),
-            timeout=25.0
+            loop.run_in_executor(None, lambda: _call_groq_api(prompt)),
+            timeout=20.0
         )
         if parsed is None:
             return None
@@ -1169,11 +1160,11 @@ Respond ONLY with valid JSON:
         reasoning  = parsed.get("reasoning", [])
         confidence = max(20, min(95, int(parsed.get("confidence", 60))))
 
-        logger.info(f"Gemini raw verdict: {score} — {label}")
+        logger.info(f"Groq verdict: {score} — {label}")
         return {"score": score, "label": label, "reasoning": reasoning, "confidence": confidence}
 
     except Exception as e:
-        logger.warning(f"Gemini verdict failed: {e}")
+        logger.warning(f"Groq verdict failed: {e}")
         return None
 
 
@@ -1662,8 +1653,8 @@ async def capabilities():
         "google_search":  bool(GOOGLE_SEARCH_API_KEY and GOOGLE_SEARCH_CX),
         "pdf":            PDF_AVAILABLE,
         "ner":            SPACY_AVAILABLE,
-        "gemini":         bool(GEMINI_API_KEY),
-        "gemini_model":   GEMINI_MODEL,
+        "gemini":         bool(GROQ_API_KEY),
+        "gemini_model":   "llama-3.1-8b-instant",
     }
 
 @api_router.get("/cache/clear")
@@ -1707,13 +1698,13 @@ async def startup_event():
         f"## Capabilities\n- OCR: {OCR_AVAILABLE}\n- URL: {TRAFILATURA_AVAILABLE}\n"
         f"- DDG: {DDG_AVAILABLE}\n- PDF: {PDF_AVAILABLE}\n- NER: {SPACY_AVAILABLE}\n"
         f"- Google Search: {'YES' if GOOGLE_SEARCH_API_KEY and GOOGLE_SEARCH_CX else 'NO'}\n"
-        f"- Gemini: {'YES (' + GEMINI_MODEL + ')' if GEMINI_API_KEY else 'NO'}\n"
+        f"- Groq: {'YES' if GROQ_API_KEY else 'NO'}\n"
     )
     logger.info(
         f"TruthScan v4.5 started. OCR={OCR_AVAILABLE} URL={TRAFILATURA_AVAILABLE} "
         f"DDG={DDG_AVAILABLE} PDF={PDF_AVAILABLE} NER={SPACY_AVAILABLE} "
         f"Google={'YES' if GOOGLE_SEARCH_API_KEY and GOOGLE_SEARCH_CX else 'NO'} "
-        f"Gemini={'YES (' + GEMINI_MODEL + ')' if GEMINI_API_KEY else 'NO'}"
+        f"Groq={'YES' if GROQ_API_KEY else 'NO'}"
     )
 
 @app.on_event("shutdown")
