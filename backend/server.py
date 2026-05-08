@@ -593,10 +593,7 @@ def _classify_evidence_type(url: str, title: str, denial: int, confirm: int) -> 
     return "reference"
 
 def _relevance_weight(title: str, claim: str, body: str = "") -> float:
-    STOPWORDS = {"a","an","the","in","on","at","to","of","is","was","are","were",
-                 "and","or","for","by","with","that","this","its","it","be","as",
-                 "from","has","had","have","but","not","will","did","do","can",
-                 "we","he","she","they","i","my","his","her","their","our"}
+    STOPWORDS = {"a","an","the","in","on","at","to","of","is","was","are","were","and","or","for","by","with","that","this","its","it","be","as","from","has","had","have","but","not","will","did","do","can","we","he","she","they","i","my","his","her","their","our"}
     claim_words = {w for w in claim.lower().split() if len(w) > 2 and w not in STOPWORDS}
     combined = (title + " " + body[:300]).lower()
     combined_words = {w for w in combined.split() if len(w) > 2 and w not in STOPWORDS}
