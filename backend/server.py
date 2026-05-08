@@ -57,7 +57,6 @@ JWT_ALG           = "HS256"
 ADMIN_EMAIL       = os.environ.get("ADMIN_EMAIL", "admin@truthscan.ai")
 ADMIN_PASSWORD    = os.environ.get("ADMIN_PASSWORD", "admin123")
 FRONTEND_URL      = os.environ.get("FRONTEND_URL", "http://localhost:3000")
-GEMINI_MODEL      = "gemini-2.0-flash-lite"
 
 client = AsyncIOMotorClient(MONGO_URL)
 db     = client[DB_NAME]
@@ -1103,7 +1102,7 @@ def _call_groq_api(prompt: str) -> Optional[Dict]:
         return None
 
 
-async def _gemini_verdict(claim: str, evidence: Dict, nlp_data: Dict) -> Optional[Dict]:
+async def _llm_verdict(claim: str, evidence: Dict, nlp_data: Dict) -> Optional[Dict]:
     if not GROQ_API_KEY:
         return None
 
@@ -1211,7 +1210,7 @@ async def analyze_with_evidence(text: str) -> Dict[str, Any]:
         logger.warning(f"Evidence search error: {e}")
 
     claim_flags = _detect_claim_flags(claim)
-    gemini      = await _gemini_verdict(claim, evidence, nlp_data)
+    groq      = await _llm_verdict(claim, evidence, nlp_data)
 
     lc_map = {
         "Likely True": "success", "Partially True": "partial",
@@ -1227,11 +1226,11 @@ async def analyze_with_evidence(text: str) -> Dict[str, Any]:
         "Conflicting Reports":          "Credible sources present contradictory information — independently verify before concluding",
     }
 
-    if gemini:
+    if groq:
         base        = compute_final_verdict(nlp_data, evidence, claim, entities)
-        g_score     = gemini["score"]
-        g_label     = gemini["label"]
-        g_reasoning = list(gemini["reasoning"])
+        g_score     = groq["score"]
+        g_label     = groq["label"]
+        g_reasoning = list(groq["reasoning"])
 
         # Universal death hardcap — Python always enforces regardless of Gemini
         g_score = _apply_death_claim_hardcap(g_score, claim, evidence, claim_flags, g_reasoning)
@@ -1255,10 +1254,10 @@ async def analyze_with_evidence(text: str) -> Dict[str, Any]:
             "label_color":       lc_map.get(g_label, "warning"),
             "label_description": label_desc_map.get(g_label, ""),
             "reasoning":         g_reasoning[:6],
-            "confidence":        gemini["confidence"],
-            "verdict_engine":    "gemini",
+            "confidence":        groq["confidence"],
+            "verdict_engine":    "groq",
         }
-        logger.info(f"Final (Gemini): {g_score} — {g_label}")
+        logger.info(f"Final (Groq): {g_score} — {g_label}")
     else:
         result = compute_final_verdict(nlp_data, evidence, claim, entities)
         result["verdict_engine"] = "heuristic"
@@ -1663,8 +1662,8 @@ async def capabilities():
         "google_search":  bool(GOOGLE_SEARCH_API_KEY and GOOGLE_SEARCH_CX),
         "pdf":            PDF_AVAILABLE,
         "ner":            SPACY_AVAILABLE,
-        "gemini":         bool(GROQ_API_KEY),
-        "gemini_model":   "llama-3.1-8b-instant",
+        "groq":         bool(GROQ_API_KEY),
+        "groq_model":   "llama-3.1-8b-instant",
     }
 
 @api_router.get("/cache/clear")
