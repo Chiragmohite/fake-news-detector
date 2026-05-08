@@ -821,6 +821,7 @@ def _apply_claim_type_adjustments(
     is_negation = flags.get("is_negation_claim", False)
 
     if is_negation and not is_death:
+        new_score = score
     # Only flip if denial signals exist — pure confirm means claim IS true
         if denial > confirm and n_cred >= 2 and score >= 60:
             new_score = max(15, 100 - score)
