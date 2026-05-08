@@ -105,29 +105,22 @@ FACT_CHECK_DOMAINS = [
 ]
 
 DENIAL_SIGNALS = [
-    "debunked", "no evidence", "not true", "incorrect",
-    "did not happen", "never happened", "hoax", "misinformation",
-    "disinformation", "fabricated", "baseless",
-    "claim is false", "claim rejected",
-    "did not admit", "did not say", "did not lose", "not confirmed",
-    "false claim", "misleading claim", "viral claim is false",
-    "no proof", "no credible evidence",
-    "evidence unclear", "evidence remains unclear", "contradicts",
-    "misleading", "disputed",
+    "claim is false", "claim rejected", "viral claim is false",
+    "fact check false", "no evidence", "fabricated", "hoax",
+    "did not happen", "never happened", "disinformation",
+    "did not say", "did not admit", "not confirmed by",
+    "no credible evidence", "baseless claim",
 ]
 
 CONFIRM_SIGNALS = [
-    "confirmed", "verified", "correct", "factual",
-    "evidence shows", "sources confirm", "government confirms",
-    "officials confirm", "proven", "established", "documented",
-    "independently verified", "multiple sources confirm",
-    "won", "win", "winner", "victory", "champion", "championship",
-    "beat", "defeated", "title", "world cup win",
-    "blockbuster", "grand success", "record", "broke records",
-    "collection", "crore", "box office", "hit film",
-    "happened", "took place", "historic", "celebrated", "announced",
-    "real", "landmark", "released", "launched",
+    "confirmed", "verified", "officially confirmed",
+    "sources confirm", "government confirms", "officials confirm",
+    "proven", "documented", "independently verified",
+    "won", "victory", "champion", "defeated", "lost",
+    "announced", "launched", "happened", "took place",
+    "results show", "election results", "declared winner",
 ]
+
 
 HARD_DEATH_PHRASES = [
     "has died", "have died", "passed away", "death confirmed",
