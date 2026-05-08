@@ -8,7 +8,7 @@
 
 ## What is TruthScan?
 
-TruthScan is a full-stack AI-powered fact-checking web application that analyzes text, URLs, images, and PDFs to determine how credible a claim is. It searches the live internet, reasons about the evidence using Google's Gemini AI, and returns a credibility score from 0 to 100 with detailed reasoning.
+TruthScan is a full-stack AI-powered fact-checking web application that analyzes text, URLs, images, and PDFs to determine how credible a claim is. It searches the live internet, reasons about the evidence using Groq's AI, and returns a credibility score from 0 to 100 with detailed reasoning.
 
 Built to fight misinformation — TruthScan gives users the tools to verify news before sharing it.
 
@@ -29,7 +29,7 @@ Built to fight misinformation — TruthScan gives users the tools to verify news
 
 - **Multi-modal input** — analyze text, URLs, images (OCR), and PDF documents
 - **Real-time internet search** — uses Google Custom Search API to find live evidence
-- **AI reasoning** — Google Gemini AI reads the evidence and decides if the claim is true or false
+- **AI reasoning** — Groq AI reads the evidence and decides if the claim is true or false
 - **Smart death claim detection** — automatically detects and correctly scores false death claims about living people
 - **Credibility score** — 0-100 score with label (Likely True / Likely False / Needs Verification etc.)
 - **Evidence links** — shows supporting and debunking sources with direct links
@@ -50,7 +50,7 @@ Built to fight misinformation — TruthScan gives users the tools to verify news
 ### Backend
 - **FastAPI** (Python) — high-performance REST API
 - **Google Custom Search API** — real-time web search
-- **Google Gemini AI** — LLM reasoning engine (gemini-2.0-flash-lite)
+- **Groq AI** — LLM reasoning engine (LLaMA 3.3 70B)
 - **MongoDB Atlas** — cloud database for users, analyses, and cache
 - **Motor** — async MongoDB driver
 - **Trafilatura** — web article extraction
@@ -79,7 +79,7 @@ Google Search (3 queries → real-time results)
        ↓
 Evidence scoring (credible domains, fact-checkers, denial/confirm signals)
        ↓
-Gemini AI reasons about the evidence
+Groq AI reasons about the evidence
        ↓
 Python hardcap layer (death claims, negation claims, temporal claims)
        ↓
@@ -118,7 +118,7 @@ pip install -r requirements.txt
 MONGO_URL=mongodb://localhost:27017
 DB_NAME=truthscan_db
 JWT_SECRET=your_secret_key
-GEMINI_API_KEY=your_gemini_key
+GROQ_API_KEY=your_groq_key
 GOOGLE_SEARCH_API_KEY=your_google_key
 GOOGLE_SEARCH_CX=your_search_engine_id
 OCR_SPACE_API_KEY=your_ocr_space_key
