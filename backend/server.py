@@ -592,21 +592,29 @@ def _classify_evidence_type(url: str, title: str, denial: int, confirm: int) -> 
     if confirm > denial:  return "supporting"
     return "reference"
 
-def _relevance_weight(title: str, claim: str) -> float:
+def _relevance_weight(title: str, claim: str, body: str = "") -> float:
     STOPWORDS = {"a","an","the","in","on","at","to","of","is","was","are","were",
                  "and","or","for","by","with","that","this","its","it","be","as",
                  "from","has","had","have","but","not","will","did","do","can",
                  "we","he","she","they","i","my","his","her","their","our"}
     claim_words = {w for w in claim.lower().split() if len(w) > 2 and w not in STOPWORDS}
-    title_words = {w for w in title.lower().split() if len(w) > 2 and w not in STOPWORDS}
+    combined = (title + " " + body[:300]).lower()
+    combined_words = {w for w in combined.split() if len(w) > 2 and w not in STOPWORDS}
     if not claim_words: return 1.0
-    overlap = len(claim_words & title_words)
+    overlap = len(claim_words & combined_words)
     ratio   = overlap / len(claim_words)
-    if   ratio >= 0.4 or overlap >= 3: return 1.0
-    elif ratio >= 0.2 or overlap >= 2: return 0.6
-    elif overlap == 1:                 return 0.25
-    else:                              return 0.05
+    if   ratio >= 0.5 or overlap >= 4: return 1.0
+    elif ratio >= 0.3 or overlap >= 3: return 0.6
+    elif overlap == 2:                 return 0.3
+    elif overlap == 1:                 return 0.1
+    else:                              return 0.02
 
+def _signal_near_claim(snippet: str, claim_words: set, signal: str) -> bool:
+    """Signal only counts if it appears near claim keywords in snippet."""
+    idx = snippet.lower().find(signal)
+    if idx == -1: return False
+    context = snippet[max(0, idx-100):idx+100].lower()
+    return any(w in context for w in claim_words)
 
 def score_evidence(results: List[Dict], claim: str) -> Dict:
     credible_count   = 0
@@ -629,11 +637,13 @@ def score_evidence(results: List[Dict], claim: str) -> Dict:
         if is_fact_check: fact_check_count += 1
 
         quality_weight = 3 if is_fact_check else (2 if is_credible else 1)
-        relevance      = _relevance_weight(title_raw, claim)
+        relevance      = _relevance_weight(title_raw, claim, body)
         weight         = quality_weight * relevance
 
-        r_denial  = sum(1 for w in DENIAL_SIGNALS  if w in combined)
-        r_confirm = sum(1 for w in CONFIRM_SIGNALS if w in combined)
+        claim_words = {w for w in claim.lower().split() if len(w) > 2}
+        r_denial  = sum(1 for w in DENIAL_SIGNALS  if _signal_near_claim(combined, claim_words, w))
+        r_confirm = sum(1 for w in CONFIRM_SIGNALS if _signal_near_claim(combined, claim_words, w))
+        
         denial_score  += r_denial  * weight
         confirm_score += r_confirm * weight
 
@@ -1137,9 +1147,17 @@ RULE 4 — FAKE NEWS / MISINFORMATION INDICATORS:
      conspiracy theories, or other clear misinformation markers → score MUST be below 20.
    - These are hallmarks of fabricated viral content. Score accordingly.
 
-RULE 5 — GENERAL:
-   - Evidence that a person EXISTS or is ACTIVE does not confirm a claim ABOUT them.
-   - Extraordinary claims need explicit confirmation, not just related articles.
+RULE 5 — ARTICLE EXISTENCE ≠ CONFIRMATION:
+   - Finding articles ABOUT a topic does NOT confirm the specific claim.
+   - Example: Articles about "West Bengal election" do NOT confirm "BJP won West Bengal".
+   - Only count as confirmation if snippet EXPLICITLY states the exact claimed outcome.
+   - If snippets discuss the topic generally but don't confirm the specific claim → score 40-55.
+
+RULE 6 — ELECTION/RESULT CLAIMS:
+   - Search for explicit "X won", "X lost", "X defeated" in snippets.
+   - If snippets show OPPOSITE outcome → score 8-22.
+   - If snippets confirm exact outcome → score 70-85.
+   - If snippets only discuss elections generally → score 45-55.
 
 Respond ONLY with valid JSON, no other text:
 {{
