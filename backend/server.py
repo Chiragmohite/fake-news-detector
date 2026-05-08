@@ -1108,61 +1108,51 @@ async def _gemini_verdict(claim: str, evidence: Dict, nlp_data: Dict) -> Optiona
         return None
 
     snippets = []
-    for r in evidence.get("processed_results", [])[:6]:
-        title   = r.get("title", "")[:80]
-        snippet = (r.get("body", r.get("snippet", "")) or "")[:200]
+    for r in evidence.get("processed_results", [])[:8]:
+        title   = r.get("title", "")[:100]
+        snippet = (r.get("body", r.get("snippet", "")) or "")[:300]
         url     = r.get("href", r.get("url", ""))
-        if title or snippet:
-            domain = url.split("/")[2] if url.startswith("http") else url
-            snippets.append(f"- [{domain}] {title}: {snippet}")
+        domain  = url.split("/")[2] if url.startswith("http") else url
+        is_cred = "✓CREDIBLE" if r.get("is_credible") else ""
+        is_fc   = "✓FACTCHECK" if r.get("is_fact_check") else ""
+    if title or snippet:
+        snippets.append(f"[{domain}]{is_cred}{is_fc}\nTitle: {title}\nSnippet: {snippet}\n")
 
     snippets_text = "\n".join(snippets) if snippets else "No search results found."
 
-    prompt = f"""You are a professional fact-checker. Determine if a CLAIM is true or false based on SEARCH EVIDENCE.
+    prompt = f"""You are a professional fact-checker with access to current news snippets.
 
-CLAIM: "{claim}"
+CLAIM TO VERIFY: "{claim}"
 
-SEARCH EVIDENCE:
+CURRENT NEWS SNIPPETS FROM GOOGLE/WEB SEARCH:
 {snippets_text}
 
-STRICT RULES — follow exactly:
+YOUR JOB:
+1. Read each snippet carefully
+2. Find snippets that DIRECTLY mention the claim's subject and outcome
+3. Determine if the claim matches what the snippets actually say
 
-RULE 1 — DEATH CLAIMS ("X died", "X passed away", "X was killed", "X is dead"):
-   - Search evidence for EXPLICIT death confirmation (death date, funeral, obituary, official announcement).
-   - If NO explicit death confirmation → score MUST be 5 to 15. No higher.
-   - If evidence shows person is alive, active, working → score MUST be 5 to 12.
-   - Only score above 50 if evidence has specific, explicit death confirmation with details.
-   - Articles about a living person's career/awards/activity = PROOF they are alive = claim is FALSE.
+SCORING RULES:
+- Score 80-95: Multiple snippets EXPLICITLY confirm the exact claim
+- Score 60-79: Some snippets support the claim but not fully explicit  
+- Score 40-59: Snippets discuss the topic but don't confirm or deny the specific claim
+- Score 20-39: Snippets suggest the opposite of the claim
+- Score 5-19: Snippets EXPLICITLY contradict the claim
 
-RULE 2 — NEGATION CLAIMS ("X lost", "X failed", "X didn't win"):
-   - If evidence confirms the OPPOSITE (X won, X succeeded) → score MUST be 8 to 22.
+CRITICAL RULES:
+1. Article EXISTS about topic ≠ claim is true. Read what article SAYS.
+2. For election claims: find explicit "X won" or "X lost" in snippets
+3. For death claims: find explicit death confirmation with date/details
+4. For event claims: find explicit confirmation the event happened
+5. If snippets only discuss topic generally without confirming outcome → score 45-55
+6. If NO snippets found → score 50 (unknown)
+7. Base score ONLY on what snippets explicitly state, not your training knowledge
 
-RULE 3 — TEMPORAL CLAIMS ("yesterday", "today", "this morning"):
-   - If no recent news explicitly confirms the event → score MUST be below 35.
-
-RULE 4 — FAKE NEWS / MISINFORMATION INDICATORS:
-   - If the claim contains phrases like "miracle cure", "doctors hate this", "wake up sheeple",
-     "government cover-up", "share before they delete", "big pharma", "suppressed information",
-     conspiracy theories, or other clear misinformation markers → score MUST be below 20.
-   - These are hallmarks of fabricated viral content. Score accordingly.
-
-RULE 5 — ARTICLE EXISTENCE ≠ CONFIRMATION:
-   - Finding articles ABOUT a topic does NOT confirm the specific claim.
-   - Example: Articles about "West Bengal election" do NOT confirm "BJP won West Bengal".
-   - Only count as confirmation if snippet EXPLICITLY states the exact claimed outcome.
-   - If snippets discuss the topic generally but don't confirm the specific claim → score 40-55.
-
-RULE 6 — ELECTION/RESULT CLAIMS:
-   - Search for explicit "X won", "X lost", "X defeated" in snippets.
-   - If snippets show OPPOSITE outcome → score 8-22.
-   - If snippets confirm exact outcome → score 70-85.
-   - If snippets only discuss elections generally → score 45-55.
-
-Respond ONLY with valid JSON, no other text:
+Respond ONLY with valid JSON:
 {{
   "score": <integer 0-100>,
-  "label": "<one of: Likely True | Partially True | Needs Verification | Misleading / Missing Context | Likely False | Conflicting Reports>",
-  "reasoning": ["<reason 1>", "<reason 2>", "<reason 3 max>"],
+  "label": "<Likely True | Partially True | Needs Verification | Misleading / Missing Context | Likely False | Conflicting Reports>",
+  "reasoning": ["<what snippets say about this claim>", "<specific evidence found>", "<confidence reason>"],
   "confidence": <integer 0-100>
 }}"""
 
