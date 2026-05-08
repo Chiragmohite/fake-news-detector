@@ -821,15 +821,15 @@ def _apply_claim_type_adjustments(
     is_negation = flags.get("is_negation_claim", False)
 
     if is_negation and not is_death:
-        if confirm > denial * 2 and n_cred >= 2 and score >= 60:
+    # Only flip if denial signals exist — pure confirm means claim IS true
+        if denial > confirm and n_cred >= 2 and score >= 60:
             new_score = max(15, 100 - score)
-            logger.info(f"Negation flip: {score} → {new_score}")
-            final_reasoning.insert(0, "Evidence strongly confirms the OPPOSITE of this claim")
-            return new_score
-        elif confirm > denial and n_cred >= 1 and score >= 55:
-            new_score = max(25, score - 25)
-            final_reasoning.insert(0, "Evidence contradicts this claim — sources support the opposite outcome")
-            return new_score
+        final_reasoning.insert(0, "Evidence strongly confirms the OPPOSITE of this claim")
+        return new_score
+    elif denial > confirm and n_cred >= 1 and score >= 55:
+        new_score = max(25, score - 25)
+        final_reasoning.insert(0, "Evidence contradicts this claim")
+        return new_score
 
     if is_death:
         return _apply_death_claim_hardcap(score, claim, evidence, flags, final_reasoning)
