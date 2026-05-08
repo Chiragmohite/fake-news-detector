@@ -1119,39 +1119,54 @@ async def _llm_verdict(claim: str, evidence: Dict, nlp_data: Dict) -> Optional[D
 
     snippets_text = "\n".join(snippets) if snippets else "No search results found."
 
-    prompt = f"""You are a professional fact-checker with access to current news snippets.
+    prompt = f"""You are an expert fact-checker with comprehensive knowledge across politics, science, history, sports, geography, and current events.
 
 CLAIM TO VERIFY: "{claim}"
 
 CURRENT NEWS SNIPPETS FROM WEB SEARCH:
 {snippets_text}
 
-YOUR JOB:
-1. Read each snippet carefully
-2. Find snippets that DIRECTLY mention the claim's subject and outcome
-3. Determine if the claim matches what the snippets actually say
+YOUR FACT-CHECKING PROCESS:
 
-SCORING RULES:
-- Score 80-95: Multiple snippets EXPLICITLY confirm the exact claim
-- Score 60-79: Some snippets support the claim but not fully explicit
-- Score 40-59: Snippets discuss the topic but don't confirm or deny the specific claim
-- Score 20-39: Snippets suggest the opposite of the claim
-- Score 5-19: Snippets EXPLICITLY contradict the claim
+STEP 1 — KNOWLEDGE ASSESSMENT (always do this first):
+Ask yourself: "Do I already know if this is true or false from my training?"
+- Political roles: Who is actually the PM/President/CM/CEO/King of X?
+- Scientific facts: Is this claim consistent with established science?
+- Historical facts: Did this event actually happen?
+- Geography: Does this place/country/capital exist as described?
+- Sports: Who actually won this match/tournament/championship?
+- Deaths: Is this person actually dead or alive?
+- Records: Is this actually the biggest/fastest/first/largest?
 
-CRITICAL RULES:
-1. Article EXISTS about topic does NOT mean claim is true. Read what article SAYS.
-2. For political role claims ("X is PM/CM/President"): verify the EXACT person holds EXACT role
-3. For election claims: find explicit "X won" or "X lost" in snippets
-4. For death claims: find explicit death confirmation with date/details
-5. If snippets only discuss topic generally without confirming outcome → score 45-55
-6. If NO snippets found → use your own knowledge to score
-7. Base score on snippets first, your knowledge second
+If your knowledge clearly tells you this claim is FALSE → score 5-19, do not let snippets override this.
+If your knowledge clearly tells you this claim is TRUE → score 75-95, then verify with snippets.
+If you are UNSURE from knowledge alone → move to Step 2.
+
+STEP 2 — SNIPPET ANALYSIS:
+- Read what snippets ACTUALLY SAY, not just that they exist
+- An article about a topic does NOT confirm the specific claim
+- Look for explicit confirmation or contradiction of the exact claim made
+- If snippets contradict your knowledge → trust your knowledge unless 3+ credible sources say otherwise
+
+STEP 3 — FINAL SCORE:
+- Score 80-95: Clearly true — knowledge + snippets both confirm
+- Score 60-79: Probably true — some support, minor uncertainty
+- Score 40-59: Uncertain — cannot confirm or deny confidently  
+- Score 20-39: Probably false — knowledge or snippets suggest opposite
+- Score 5-19: Clearly false — knowledge confirms false OR strong snippet contradiction
+
+CRITICAL REMINDERS:
+1. Wrong person for a role (PM, President, CM) → always score 5-15
+2. Impossible or absurd claims → always score 5-15
+3. Claims contradicting well-established science → score 5-25
+4. Snippets about a RELATED topic do NOT confirm the specific claim
+5. Your knowledge is your most reliable tool — use it first
 
 Respond ONLY with valid JSON, no other text:
 {{
   "score": <integer 0-100>,
   "label": "<Likely True | Partially True | Needs Verification | Misleading / Missing Context | Likely False | Conflicting Reports>",
-  "reasoning": ["<what snippets say about this claim>", "<specific evidence found>", "<confidence reason>"],
+  "reasoning": ["<what your knowledge says about this claim>", "<what snippets say>", "<why you gave this score>"],
   "confidence": <integer 0-100>
 }}"""
 
