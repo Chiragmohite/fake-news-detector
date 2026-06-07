@@ -39,7 +39,7 @@ Built to fight misinformation — TruthScan gives users the tools to verify news
 
 ---
 
-## Tech Stack
+## Tech Stacks
 
 ### Frontend
 - **React 18** — component-based UI
